@@ -113,8 +113,8 @@ BOOT_IMAGE=/boot/vmlinuz-... root=... memmap=4G$0x100000000 intel_iommu=off intr
 ### Clone the repository
 
 ```bash
-$ git clone https://github.com/HyperEnclave/hyperenclave.git
-$ git clone https://github.com/HyperEnclave/hyperenclave-driver.git
+$ git clone https://github.com/asterinas/hyperenclave.git
+$ git clone https://github.com/asterinas/hyperenclave-driver.git
 ```
 
 ### Build the HyperEnclave's driver
