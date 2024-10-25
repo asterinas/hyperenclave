@@ -248,5 +248,29 @@ Yuekai Jia, Shuang Liu, Wenhao Wang, Yu Chen, Zhengde Zhai, Shoumeng Yan, and Zh
 }
 ```
 
+[**ASPLOS'24**] [Verifying Rust Implementation of Page Tables in a Software Enclave Hypervisor.](https://dl.acm.org/doi/10.1145/3620665.3640398)
+Zhenyang Dai, Shuang Liu, Vilhelm Sjoberg, Xupeng Li, Yu Chen, Wenhao Wang, Yuekai Jia, Sean Noble Anderson, Laila Elbeheiry, Shubham Sondhi, Yu Zhang, Zhaozhong Ni, Shoumeng Yan, Ronghui Gu, and Zhengyu He. 2024. Verifying Rust Implementation of Page Tables in a Software Enclave Hypervisor. In Proceedings of the 29th ACM International Conference on Architectural Support for Programming Languages and Operating Systems, Volume 2 (ASPLOS '24), Vol. 2. Association for Computing Machinery, New York, NY, USA, 1218–1232.
+
+```
+@inproceedings{10.1145/3620665.3640398,
+author = {Dai, Zhenyang and Liu, Shuang and Sjoberg, Vilhelm and Li, Xupeng and Chen, Yu and Wang, Wenhao and Jia, Yuekai and Anderson, Sean Noble and Elbeheiry, Laila and Sondhi, Shubham and Zhang, Yu and Ni, Zhaozhong and Yan, Shoumeng and Gu, Ronghui and He, Zhengyu},
+title = {Verifying Rust Implementation of Page Tables in a Software Enclave Hypervisor},
+year = {2024},
+isbn = {9798400703850},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3620665.3640398},
+doi = {10.1145/3620665.3640398},
+abstract = {As trusted execution environments (TEE) have become the corner stone for secure cloud computing, it is critical that they are reliable and enforce proper isolation, of which a key ingredient is spatial isolation. Many TEEs are implemented in software such as hypervisors for flexibility, and in a memory-safe language, namely Rust to alleviate potential memory bugs. Still, even if memory bugs are absent from the TEE, it may contain semantic errors such as mis-configurations in its memory subsystem which breaks spatial isolation.In this paper, we present the verification of the memory subsystem of a software TEE in Rust, namely HyperEnclave. We prove spatial isolation for the secure enclave though correct configuration of page tables for an early prototype of HyperEnclave. To formally model Rust code, we introduce a lightweight formal semantics for the Mid-level intermediate representation (MIR) of Rust. To make verification scalable for such a complex system, we incorporate the MIR semantics with a layered proof framework.},
+booktitle = {Proceedings of the 29th ACM International Conference on Architectural Support for Programming Languages and Operating Systems, Volume 2},
+pages = {1218–1232},
+numpages = {15},
+keywords = {formal verification, rust, trusted execution environments, extended page tables},
+location = {La Jolla, CA, USA},
+series = {ASPLOS '24}
+}
+
+```
+
 # License
 Except where noted otherwise, HyperEnclave's hypervisor is under the Apache License (Version 2.0). See the [LICENSE](./LICENSE) files for details.
