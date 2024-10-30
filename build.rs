@@ -12,13 +12,38 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::fs;
 use std::fs::File;
+use std::io::{Error, ErrorKind};
 use std::io::{Result, Write};
 use std::path::PathBuf;
 use std::process::Command;
 
 fn main() -> Result<()> {
     gen_vector_asm()?;
+    let _rhv = get_version("../rust-hypervisor/VERSION")?;
+    let rhv = to_subversion(_rhv);
+    let _lv = get_version("../libtpm/VERSION")?;
+    let lv = to_subversion(_lv);
+
+    let v0a = rhv.0;
+    let v0b = rhv.1;
+    let v0c = rhv.2;
+    let v1a = lv.0;
+    let v1b = lv.1;
+    let v1c = lv.2;
+
+    if _rhv != _lv {
+        println!(
+            "Compliation error: version mismatch. rust_hypervisor \
+            v{}.{}.{} v. libtpm v.{}.{}.{}",
+            v0a, v0b, v0c, v1a, v1b, v1c
+        );
+        return Err(Error::new(ErrorKind::InvalidData, ""));
+    }
+
+    gen_version(_rhv, "version.rs")?;
+
     build_trust_lib();
     Ok(())
 }
@@ -45,6 +70,41 @@ fn gen_vector_asm() -> Result<()> {
     for i in 0..256 {
         writeln!(f, "\t.quad __entry{}", i)?;
     }
+    Ok(())
+}
+
+/// return (a, b, c)
+fn to_subversion(version: u32) -> (u8, u8, u8) {
+    ((version >> 16) as u8, (version >> 8) as u8, version as u8)
+}
+
+fn get_version(filename: &str) -> Result<u32> {
+    if fs::metadata(filename).is_err() {
+        let mut err_msg: String = "Fail to find ".to_owned();
+        err_msg.push_str(filename);
+        return Err(Error::new(ErrorKind::NotFound, err_msg));
+    }
+    let vstr = fs::read_to_string(filename)?;
+
+    let err_msg = "Invalid version format. Should be va.b.c";
+
+    if !vstr.starts_with('v') {
+        return Err(Error::new(ErrorKind::InvalidData, err_msg));
+    }
+
+    let mut subversion = vstr[1..].trim().split('.');
+    let a: u8 = subversion.next().unwrap().parse().unwrap();
+    let b: u8 = subversion.next().unwrap().parse().unwrap();
+    let c: u8 = subversion.next().unwrap().parse().unwrap();
+
+    Ok(c as u32 | ((b as u32) << 8) | ((a as u32) << 16))
+}
+
+fn gen_version(version: u32, version_rs_filename: &str) -> Result<()> {
+    let out_path = PathBuf::from(std::env::var("OUT_DIR").unwrap());
+    let mut f = File::create(out_path.join(version_rs_filename))?;
+    writeln!(f, "#[allow(dead_code)]")?;
+    writeln!(f, "const RUST_HYPERVISOR_VERSION: u32 = {:#x};", version)?;
     Ok(())
 }
 
