@@ -146,7 +146,6 @@ impl PerCpu {
     pub fn activate_vmm(&mut self) -> HvResult {
         println!("Activating hypervisor on CPU {}...", self.cpu_id);
         ACTIVATED_CPUS.fetch_add(1, Ordering::SeqCst);
-        logging::set_vmm_state(self.cpu_id, 1);
 
         let local_cpu_data = Self::from_local_base_mut();
         let old_percpu_vaddr = self as *const _ as usize;
@@ -160,7 +159,6 @@ impl PerCpu {
     pub fn deactivate_vmm(&mut self, ret_code: usize) -> HvResult {
         println!("Deactivating hypervisor on CPU {}...", self.cpu_id);
         ACTIVATED_CPUS.fetch_add(-1, Ordering::SeqCst);
-        logging::set_vmm_state(self.cpu_id, 0);
 
         self.vcpu.set_return_val(ret_code);
 
