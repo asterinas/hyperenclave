@@ -75,8 +75,9 @@ numeric_enum! {
 
         HypervisorGetPubKeys = 0x8000_4000,
         HypervisorSignCSR = 0x8000_4001,
-        HypervisorWriteCert =0x8000_4002,
-        HypervisorActivateCredential =0x8000_4003,
+        HypervisorWriteCert = 0x8000_4002,
+        HypervisorActivateCredential = 0x8000_4003,
+        HypervisorGetVersion = 0x8000_4004,
     }
 }
 
@@ -122,7 +123,8 @@ impl HyperCallCode {
             | HyperCallCode::HypervisorGetPubKeys
             | HyperCallCode::HypervisorSignCSR
             | HyperCallCode::HypervisorWriteCert
-            | HyperCallCode::HypervisorActivateCredential => *cpu_state == CpuState::HvEnabled,
+            | HyperCallCode::HypervisorActivateCredential
+            | HyperCallCode::HypervisorGetVersion => *cpu_state == CpuState::HvEnabled,
 
             HyperCallCode::EnclaveExit
             | HyperCallCode::EnclaveAccept
@@ -287,6 +289,7 @@ impl<'a> HyperCall<'a> {
             HyperCallCode::HypervisorWriteCert => self.mng_tpm_cert(),
             HyperCallCode::EnclaveVerifyReport => self.verify_report(),
             HyperCallCode::HypervisorActivateCredential => self.activate_credential(),
+            HyperCallCode::HypervisorGetVersion => self.get_version(),
         };
 
         debug!("HyperCall: {:?} <= {:x?}", code, ret);
