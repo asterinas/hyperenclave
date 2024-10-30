@@ -21,6 +21,8 @@ use crate::percpu::PER_CPU_SIZE;
 const MAX_CONV_MEM_REGIONS: usize = 32;
 /// Max numbuer of initialized EPC regions
 const MAX_INIT_EPC_REGIONS: usize = MAX_CONV_MEM_REGIONS;
+/// Make sure there is a matched version of c-driver.
+const RUST_HYPERVISOR_VERSION: u64 = 20231012000;
 
 #[derive(Debug, Clone, Copy)]
 pub struct MemRange {
@@ -35,6 +37,7 @@ pub struct HvHeader {
     pub core_size: usize,
     pub percpu_size: usize,
     pub entry: usize,
+    pub version: u64,
     pub max_cpus: u32,
     pub online_cpus: u32,
     pub arm_linux_hyp_vectors: u64,
@@ -43,9 +46,16 @@ pub struct HvHeader {
     pub tpm_mmio_size: u32,
     pub tpm_mmio_pa: usize,
 
+    #[cfg(not(feature = "direct_logging"))]
+    pub he_log_pa: u64,
+    #[cfg(not(feature = "direct_logging"))]
+    pub padding: u64,
+    #[cfg(feature = "direct_logging")]
     pub safe_print_seq_start_pa: u64,
+    #[cfg(feature = "direct_logging")]
     pub percpu_offset_pa: u64,
-    pub vmm_states_pa: u64,
+
+    pub vmm_anomaly_cpus_pa: u64,
     pub feature_mask: HEFeature,
 
     /// The size of hypervisor's heap (in bytes), must 4kB aligned.
@@ -73,6 +83,7 @@ struct HvHeaderStuff {
     core_size: unsafe extern "C" fn(),
     percpu_size: usize,
     entry: unsafe extern "C" fn(),
+    version: u64,
     max_cpus: u32,
     online_cpus: u32,
     arm_linux_hyp_vectors: u64,
@@ -80,9 +91,15 @@ struct HvHeaderStuff {
     tpm_type: u32,
     tpm_mmio_size: u32,
     tpm_mmio_pa: u64,
+    #[cfg(not(feature = "direct_logging"))]
+    he_log_pa: u64,
+    #[cfg(not(feature = "direct_logging"))]
+    padding: u64,
+    #[cfg(feature = "direct_logging")]
     safe_print_seq_start_pa: u64,
+    #[cfg(feature = "direct_logging")]
     percpu_offset_pa: u64,
-    vmm_states_pa: u64,
+    vmm_anomaly_cpus_pa: u64,
     feature_mask: HEFeature,
     hv_heap_size: HostVirtAddr,
     conv_mem_ranges: [MemRange; MAX_CONV_MEM_REGIONS],
@@ -103,6 +120,7 @@ static HEADER_STUFF: HvHeaderStuff = HvHeaderStuff {
     core_size: __core_size,
     percpu_size: PER_CPU_SIZE,
     entry: __entry_offset,
+    version: RUST_HYPERVISOR_VERSION,
     max_cpus: 0,
     online_cpus: 0,
     arm_linux_hyp_vectors: 0,
@@ -110,9 +128,15 @@ static HEADER_STUFF: HvHeaderStuff = HvHeaderStuff {
     tpm_type: 0,
     tpm_mmio_size: 0,
     tpm_mmio_pa: 0,
+    #[cfg(not(feature = "direct_logging"))]
+    he_log_pa: 0,
+    #[cfg(not(feature = "direct_logging"))]
+    padding: 0,
+    #[cfg(feature = "direct_logging")]
     safe_print_seq_start_pa: 0,
+    #[cfg(feature = "direct_logging")]
     percpu_offset_pa: 0,
-    vmm_states_pa: 0,
+    vmm_anomaly_cpus_pa: 0,
     feature_mask: HEFeature::empty(),
     hv_heap_size: 0,
     conv_mem_ranges: [MemRange { start: 0, size: 0 }; MAX_CONV_MEM_REGIONS],
