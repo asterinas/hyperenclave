@@ -21,7 +21,7 @@ use std::process::Command;
 fn main() -> Result<()> {
     gen_vector_asm()?;
 
-    gen_version(get_version("../rust-hypervisor/VERSION")?, "version.rs")?;
+    gen_version(get_version("VERSION")?, "version.rs")?;
 
     build_trust_lib();
     Ok(())
