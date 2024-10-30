@@ -113,38 +113,39 @@ fn level_to_color_code(level: Level) -> u8 {
 
 const LOGENTRY_SIZE: usize = 160;
 #[repr(C)]
-struct he_logentry {
+struct HeLogEntry {
     buf: [u8; LOGENTRY_SIZE],
     used: bool,
 }
 
 #[repr(C)]
-struct he_log {
+struct HeLog {
     log_lost: u32,
-    size: usize,
-    // log array here, flexible member size
+    num: usize,
+    // log array here, flexible member size.
 }
 
-impl he_log {
-    fn log_ptr(&mut self) -> *mut he_logentry {
-        unsafe { (self as *mut he_log).add(1) as _ }
+impl HeLog {
+    fn log_ptr(&mut self) -> *mut HeLogEntry {
+        // SAFETY: HeLog has a flexible member.
+        unsafe { (self as *mut HeLog).add(1) as _ }
     }
 
-    fn get_log(&mut self) -> &mut [he_logentry] {
-        unsafe { slice::from_raw_parts_mut(self.log_ptr(), self.size) }
+    fn get_logentries(&mut self) -> &mut [HeLogEntry] {
+        // SAFETY: log_ptr and num are validated upon initialization.
+        unsafe { slice::from_raw_parts_mut(self.log_ptr(), self.get_num()) }
     }
 
-    fn get_size(&self) -> usize {
+    // HeLog.num might be modified by untrusted driver. Instead, HE_LOG_SIZE
+    // has been validated.
+    fn get_num(&self) -> usize {
         *HE_LOG_SIZE
     }
 
-    /*
-     * VMM cannot crash us. size can be an arbitray value leading to
-     * vulnerability.
-     */
     fn validate_addr(&self) -> bool {
         let pa = HvHeader::get().he_log_pa as usize;
-        if memory::is_normal_memory(pa + self.size * size_of::<he_logentry>(), CPU_MASK_LEN)
+        // HE_LOG_SIZE is not set at this time.
+        if memory::is_normal_memory(pa, size_of::<HeLog>() + self.num * size_of::<HeLogEntry>())
             .is_err()
         {
             return false;
@@ -153,18 +154,20 @@ impl he_log {
     }
 
     fn fill_log(&mut self, index: usize, bytes: &[u8]) {
-        /* Drop incoming logs when the ring buffer is full. */
-        let len = bytes.len();
-        if self.get_log()[index].used {
+        use core::sync::atomic::fence;
+        // Drop incoming logs when the ring buffer is full.
+        let log = self.get_logentries();
+        if log[index].used {
             self.log_lost += 1;
             return;
         }
 
-        self.get_log()[index].buf[..len].clone_from_slice(&bytes[..len]);
-        self.get_log()[index].buf[len] = b'\0';
-        /* Invariant: if c-driver sees `used` set, the buffer should be valid. */
-        unsafe { asm!("mfence") };
-        self.get_log()[index].used = true;
+        let len = bytes.len();
+        log[index].buf[..len].clone_from_slice(&bytes[..len]);
+        log[index].buf[len] = b'\0';
+        // Invariant: if c-driver sees `used` set, the buffer should be valid.
+        fence(Ordering::Release);
+        log[index].used = true;
     }
 }
 
@@ -177,14 +180,20 @@ fn log_store(s: &str) {
         return;
     }
 
-    /* If a log is too long, claim multiple slots and split the long log. */
-    let nr_slots = 1 + s_len / (LOGENTRY_SIZE - 1); /* -1 for '\0' */
+    // If a log is too long, claim multiple slots and split the long log.
+    // LOGENTRY_SIZE - 1 for '\0'
+    let nr_slots = if s_len % (LOGENTRY_SIZE - 1) == 0 {
+        s_len / (LOGENTRY_SIZE - 1)
+    } else {
+        1 + s_len / (LOGENTRY_SIZE - 1)
+    };
 
-    let he_log_ref = unsafe { &mut *((*HE_LOG_VA) as *mut he_log) };
-    let start_index = LAST_LOG_INDEX.fetch_add(nr_slots, Ordering::SeqCst) % he_log_ref.get_size();
+    // SAFETY: HE_LOG_VA is validated before.
+    let he_log_ref = unsafe { &mut *((*HE_LOG_VA) as *mut HeLog) };
+    let start_index = LAST_LOG_INDEX.fetch_add(nr_slots, Ordering::SeqCst) % he_log_ref.get_num();
 
     for i in 0..nr_slots {
-        let index = (start_index + i) % he_log_ref.get_size();
+        let index = (start_index + i) % he_log_ref.get_num();
         let start_pos = i * (LOGENTRY_SIZE - 1);
         let end_pos = cmp::min((i + 1) * (LOGENTRY_SIZE - 1), s_len);
         he_log_ref.fill_log(index, &s_bytes[start_pos..end_pos]);
@@ -194,21 +203,22 @@ fn log_store(s: &str) {
 lazy_static! {
     static ref HE_LOG_VA: usize = {
         let he_log_pa = HvHeader::get().he_log_pa as usize;
-        if memory::is_normal_memory(he_log_pa, CPU_MASK_LEN).is_err() {
+        if memory::is_normal_memory(he_log_pa, size_of::<HeLog>()).is_err() {
             return 0;
         }
         addr::phys_to_virt(he_log_pa)
     };
-    /* he_log_pa and he_log_pa + size should stay in the normal memory. */
+    // he_log_pa and he_log_pa + size should stay in the normal memory.
     static ref HE_LOG_SIZE: usize = {
         if *HE_LOG_VA == 0 {
             return 0;
         }
-        let he_log_ref = unsafe { &mut *((*HE_LOG_VA) as *mut he_log) };
+        // SAFETY: HE_LOG_VA is validated before.
+        let he_log_ref = unsafe { &mut *((*HE_LOG_VA) as *mut HeLog) };
         if !he_log_ref.validate_addr() {
             return 0;
         }
-        he_log_ref.size
+        he_log_ref.num
     };
 }
 
@@ -259,6 +269,7 @@ pub fn hhbox_disable() {
 pub fn set_vmm_anomaly_cpus(cpuid: usize, state: bool) {
     if INIT_HHBOX_CRASH_OK.load(Ordering::Acquire) == 1 {
         static VMM_STATE_LOCK: SpinMutex<()> = SpinMutex::new(());
+        // SAFETY: VMM_ANOMALY_CPUS_VA is validated before.
         let vmm_anomaly_cpus = unsafe { &mut *((*VMM_ANOMALY_CPUS_VA) as *mut CpuMask) };
         let _lock = VMM_STATE_LOCK.lock();
 

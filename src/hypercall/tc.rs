@@ -38,6 +38,7 @@ use yogcrypt::sm3::sm3_enc;
 include!(concat!(env!("OUT_DIR"), "/version.rs"));
 
 extern "C" {
+    pub static LIBTPM_VERSION: u32;
     fn tpm_detect(tpm_type: uint32_t, mmio_va: uint64_t) -> bool;
     fn he_get_secret() -> bool;
     //fn he_get_enclave_secret(ptr: *mut uintptr_t) -> uint32_t;

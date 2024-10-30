@@ -14,7 +14,6 @@
 #   STATS = on | off            Given performance statistics when run enclaves.
 #   SME = on | off              [ amd only] Enable AMD Secure Memory Encryption.
 #   INTR = on | off             Enable interrupts during enclaves running.
-#   DIRECT_LOGGING = on | off	Whether directly write logs to the kernel. Must be off after 5.14.
 
 ECHO := /bin/echo -e
 CYAN := \033[1;36m
@@ -46,7 +45,6 @@ LOG ?=
 STATS ?= off
 SME ?= on
 INTR ?= on
-DIRECT_LOGGING ?= off
 
 # do not support debug mode
 MODE := release
@@ -89,10 +87,6 @@ endif
 
 ifeq ($(INTR), on)
   features += enclave_interrupt
-endif
-
-ifeq ($(DIRECT_LOGGING), on)
-  features += direct_logging
 endif
 
 build_args := --features "$(features)" --target $(ARCH).json -Z build-std=core,alloc -Z build-std-features=compiler-builtins-mem
