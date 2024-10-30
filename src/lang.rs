@@ -40,7 +40,6 @@ fn try_handle_panic(cpu_data: &mut PerCpu) -> HvResult {
 fn panic(info: &PanicInfo) -> ! {
     let cpu_data = PerCpu::from_local_base_mut();
     error!("\n{}\nCurrent Cpu: {:#x?}", info, cpu_data);
-    println!("\n{}\nCurrent Cpu: {:#x?}", info, cpu_data);
     // Marks the panic CPU abnormal, and stop itself
     crate::logging::set_vmm_anomaly_cpus(cpu_data.cpu_id, true);
     loop {}

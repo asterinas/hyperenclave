@@ -65,6 +65,8 @@ use header::HvHeader;
 use hypercall::tc;
 use percpu::PerCpu;
 
+use crate::tc::LIBTPM_VERSION;
+
 include!(concat!(env!("OUT_DIR"), "/version.rs"));
 
 static ENTERED_CPUS: AtomicUsize = AtomicUsize::new(0);
@@ -137,10 +139,22 @@ fn primary_init_late() -> HvResult {
 
     logging::hhbox_init()?;
 
-    let a = to_subversion(RUST_HYPERVISOR_VERSION).0;
-    let b = to_subversion(RUST_HYPERVISOR_VERSION).1;
-    let c = to_subversion(RUST_HYPERVISOR_VERSION).2;
-    println!("Rust-hypervisor (libtpm) version v{}.{}.{}", a, b, c);
+    let (ra, rb, rc) = to_subversion(RUST_HYPERVISOR_VERSION);
+
+    // SAFETY: LIBTPM_VERSION is an external C constant.
+    unsafe {
+        if LIBTPM_VERSION != RUST_HYPERVISOR_VERSION {
+            let (ta, tb, tc) = to_subversion(LIBTPM_VERSION);
+            error!(
+                "Version mismatch. libtpm v{}.{}.{} v \
+                rust-hypervisor v{}.{}.{} ",
+                ta, tb, tc, ra, rb, rc
+            );
+            return hv_result_err!(EINVAL);
+        }
+    }
+
+    println!("Rust-hypervisor (libtpm) version v{}.{}.{}", ra, rb, rc);
 
     iommu::init()?;
     if !tc::tc_init() {
