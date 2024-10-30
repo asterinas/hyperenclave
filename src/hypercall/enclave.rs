@@ -418,6 +418,11 @@ impl HyperCall<'_> {
         Ok(0 as usize)
     }
 
+    pub(super) fn get_version(&mut self) -> HyperCallResult<usize> {
+        self.cpu_data.vcpu.regs_mut().rax = tc::get_version() as _;
+        Ok(0)
+    }
+
     pub(super) fn enclave_add_version_array(
         &self,
         config_ptr: GuestPtr<HvEnclDesc>,

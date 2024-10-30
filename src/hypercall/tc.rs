@@ -35,6 +35,8 @@ use spin::mutex::SpinMutex;
 use yogcrypt::sm2::*;
 use yogcrypt::sm3::sm3_enc;
 
+include!(concat!(env!("OUT_DIR"), "/version.rs"));
+
 extern "C" {
     fn tpm_detect(tpm_type: uint32_t, mmio_va: uint64_t) -> bool;
     fn he_get_secret() -> bool;
@@ -417,6 +419,11 @@ pub fn activate_credential(blob: &[u8], enc_secret: &[u8], key: &mut [u8]) -> u3
         )
     }
 }
+
+pub fn get_version() -> u32 {
+    RUST_HYPERVISOR_VERSION
+}
+
 #[no_mangle]
 pub extern "C" fn hv_va_to_pa(va: uint64_t) -> uint64_t {
     virt_to_phys(va as usize) as uint64_t
