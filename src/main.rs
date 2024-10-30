@@ -65,6 +65,8 @@ use header::HvHeader;
 use hypercall::tc;
 use percpu::PerCpu;
 
+include!(concat!(env!("OUT_DIR"), "/version.rs"));
+
 static ENTERED_CPUS: AtomicUsize = AtomicUsize::new(0);
 static INITED_CPUS: AtomicUsize = AtomicUsize::new(0);
 static INIT_EARLY_OK: AtomicUsize = AtomicUsize::new(0);
@@ -126,10 +128,19 @@ fn primary_init_early() -> HvResult {
     Ok(())
 }
 
+fn to_subversion(version: u32) -> (u8, u8, u8) {
+    ((version >> 16) as u8, (version >> 8) as u8, version as u8)
+}
+
 fn primary_init_late() -> HvResult {
     info!("Primary CPU init late...");
 
     logging::hhbox_init()?;
+
+    let a = to_subversion(RUST_HYPERVISOR_VERSION).0;
+    let b = to_subversion(RUST_HYPERVISOR_VERSION).1;
+    let c = to_subversion(RUST_HYPERVISOR_VERSION).2;
+    println!("Rust-hypervisor (libtpm) version v{}.{}.{}", a, b, c);
 
     iommu::init()?;
     if !tc::tc_init() {
