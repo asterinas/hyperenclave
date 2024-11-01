@@ -41,22 +41,25 @@ We have successfully built HyperEnclave and performed tests on the following CPU
 
 # Quick start
 
-We take Intel platform as an example to show how to build HyperEnclave.
-
 ## Prerequisites
 
 ### Software version
 
-- Ubuntu 20.04
+- Ubuntu 20.04 and Ubuntu 22.04
 - Linux kernel in [Supported Linux kernel version](#supported-linux-kernel-version)
 - Linux kernel headers (For building the driver)
 - Docker
 - GCC >= 6.5
 
+
 #### Supported Linux kernel version
 
-- Linux kernel 4.19
 - Linux kernel 5.4
+- Linux kernel 5.10
+
+
+**Updates on 2024.11:** We do not support Linux kernel 4.19 with Ubuntu OS anymore.
+
 
 We can check the kernel version by:
 ```bash
@@ -66,37 +69,58 @@ $ uname -r
 and install the required kernel (if necessary) by:
 
 ```bash
-# Download and install Linux 5.4 kernel.
+# Download scripts for installing kernel
 $ sudo apt install wget
 $ wget https://raw.githubusercontent.com/pimlie/ubuntu-mainline-kernel.sh/master/ubuntu-mainline-kernel.sh
 $ chmod +x ubuntu-mainline-kernel.sh
-$ sudo ./ubuntu-mainline-kernel.sh -i 5.4.0
+# Download and install Linux 5.4 or 5.10 kernel.
+$ sudo ./ubuntu-mainline-kernel.sh -i [5.4.0 | 5.10.0]
 
 # Reboot the system, and we need to select the kernel in grub menu.
 $ sudo reboot
 ```
 
 ### Hardware requirements
-- Intel platform which supports VMX
-- The DRAM size of your platform should be greater than 8GB
+- **CPU & Virtualization**: An Intel, AMD, or HYGON processor that supports and has enabled virtualization (VMX for Intel, AMD-V for AMD) in the BIOS.
+- **IOMMU**: Intel VT-d or AMD IOMMU must be supported and enabled in the BIOS.
+- **Memory**: At least 8GB of RAM.
 
 ## Steps
 
-### Reserve secure memory for HyperEnclave in kernel’s command-line
+### Step-1: Get the full system memory size and reserve secure memory for HyperEnclave in kernel’s command-line
+
+- **Step 1.a**: Get the full system memory size: `full_system_size`, and reserved memory size: `reserved_mem_size`
+
+```bash
+$ free -h
+               total        used        free      shared  buff/cache   available
+Mem：       15Gi       1.3Gi        11Gi       2.0Mi       3.5Gi        14Gi
+Swap：      2.0Gi          0B       2.0Gi
+```
+
+For the example above, the `full_system_size` is 15G, then `reserved_mem_size` eqauls to `full_system_size / 2` = 8G
+
+- **Step 1.b**: Reserve secure memory for HyperEnclave
 
 Open and modify the `/etc/default/grub` file, and append the following configurations for `GRUB_CMDLINE_LINUX`:
 
 ```
-memmap=4G\\\$0x100000000 intel_iommu=off intremap=off no5lvl
+memmap=[reserved_mem_size]G\\\$0x100000000 iommu=off intremap=off no5lvl
 ```
 
+For the example above, the configuration should be:
+```
+memmap=8G\\\$0x100000000 iommu=off intremap=off no5lvl
+```
 
-Take the new grub configuration into effect, and reboot the system:
+- **Step 1.c**: Take the new grub configuration into effect, and reboot the system
 
 ```bash
 $ sudo update-grub
 $ sudo reboot
 ```
+
+- **Step 1.d**: Verify that the configuration takes effect
 
 After reboot, check whether the modified kernel's command-line takes effect:
 
@@ -106,43 +130,53 @@ $ cat /proc/cmdline
 
 You can see:
 ```
-BOOT_IMAGE=/boot/vmlinuz-... root=... memmap=4G$0x100000000 intel_iommu=off intremap=off no5lvl ...
+BOOT_IMAGE=/boot/vmlinuz-... root=... memmap=8G$0x100000000 iommu=off intremap=off no5lvl ...
 ```
 
 
-### Clone the repository
+### Step-2: Clone the repository
 
 ```bash
 $ git clone https://github.com/asterinas/hyperenclave.git
 $ git clone https://github.com/asterinas/hyperenclave-driver.git
 ```
 
-### Build the HyperEnclave's driver
+### Step-3: Build the HyperEnclave's driver
 ```bash
 $ cd hyperenclave-driver
 $ make
 $ cd ..
 ```
 
-### Build and install HyperEnclave
+### Step-4: Build and install HyperEnclave
+
+- **Step 4.a**: Install Rust toolchain
+
 ```bash
 # Install rust toolchain 
 $ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 $ source $HOME/.cargo/env
 $ rustup component add rust-src
-
-# Build and install HyperEnclave
-$ cd hyperenclave
-$ make VENDOR=intel SME=off LOG=warn
-$ make VENDOR=intel SME=off LOG=warn install
-$ cd ..
 ```
 
-### Start HyperEnclave
+- **Step 4.b**: Build and install HyperEnclave
+
+Hyperenclave now supports three CPU vendors:
+1. Intel
+2. AMD
+3. Hygon
+
+We need to choose the correct CPU vendor and run the following script:
+
+```bash
+$ bash -x scripts/build_and_install_hyperenclave.sh [Intel | AMD | Hygon]
+```
+
+### Step-5: Start HyperEnclave
 
 ```bash
 $ cd hyperenclave/scripts
-$ bash start_hyperenclave.sh
+$ bash -x start_hyperenclave.sh
 $ cd ../..
 ```
 
@@ -166,7 +200,7 @@ And you can see:
 
 It indicates we successfully start the HyperEnclave.
 
-### Run TEE applications
+### Step-6: Run TEE applications
 
 We provide several sample TEE applications running atop of HyperEnclave. All of them are integrated into our docker image.
 
