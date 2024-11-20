@@ -1,5 +1,9 @@
 #!/bin/bash
 
+SCRIPT_DIR=$(cd $(dirname $0); pwd)
+
+source $SCRIPT_DIR/check_prereq.sh
+
 CMDLINE=/proc/cmdline
 
 YELLOW="\e[33m"
@@ -48,6 +52,6 @@ if [ "$res" = "ERROR" ];then
 	echo "ERROR. Please use correct memmap parameter: memmap=nn[KMG]$ss[KMG]"
 else
 	feature_mask=0x302
-	sudo insmod ../../hyperenclave-driver/driver/hyper_enclave.ko str_memmap=$res feature_mask=$feature_mask
+	sudo insmod $SCRIPT_DIR/../../hyperenclave-driver/driver/hyper_enclave.ko str_memmap=$res feature_mask=$feature_mask
 	sudo sysctl dev.hyper_enclave.enabled=1
 fi
