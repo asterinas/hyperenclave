@@ -1,5 +1,8 @@
 #!/bin/bash
 
+SCRIPT_DIR=$(dirname "$0")
+cd $SCRIPT_DIR/..
+
 check_sme()
 {
 	if lscpu | grep -wq "sme"; then  # Use -w for word matching

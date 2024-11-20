@@ -54,8 +54,8 @@ We have successfully built HyperEnclave and performed tests on the following CPU
 
 #### Supported Linux kernel version
 
-- Linux kernel 5.4
-- Linux kernel 5.10
+- Linux kernel 5.10 (**Recommend**)
+- Linux kernel 5.4 with fsgsbase support
 
 
 **Updates on 2024.11:** We do not support Linux kernel 4.19 with Ubuntu OS anymore.
@@ -73,12 +73,28 @@ and install the required kernel (if necessary) by:
 $ sudo apt install wget
 $ wget https://raw.githubusercontent.com/pimlie/ubuntu-mainline-kernel.sh/master/ubuntu-mainline-kernel.sh
 $ chmod +x ubuntu-mainline-kernel.sh
-# Download and install Linux 5.4 or 5.10 kernel.
-$ sudo ./ubuntu-mainline-kernel.sh -i [5.4.0 | 5.10.0]
+# Download and install Linux 5.10 or 5.4.0 kernel.
+$ sudo ./ubuntu-mainline-kernel.sh -i [5.10.0 | 5.4.0]
 
 # Reboot the system, and we need to select the kernel in grub menu.
 $ sudo reboot
 ```
+
+For Linux kernel 5.4, **enabled_rdfsbase** kernel modules must be installed by following the instructions [here](https://github.com/occlum/enable_rdfsbase).
+
+After the Linux kernel installed, check the rdfsbase/rdgsbase is enabled:
+```bash
+$ cd scripts
+$ ./check_prereq.sh
+$ cd ..
+```
+
+And the output:
+```
+[Check FSGSBASE]: PASS
+```
+
+indicates that the rdfsgsbase/wrfsgsbase is enabled on your platform.
 
 ### Hardware requirements
 - **CPU & Virtualization**: An Intel, AMD, or HYGON processor that supports and has enabled virtualization (VMX for Intel, AMD-V for AMD) in the BIOS.
@@ -239,7 +255,7 @@ Reference to `demos/RemoteAttestation` for more information.
 
 #### Occlum demos
 
-You can also run TEE applications developed based on [Occlum](https://github.com/occlum/occlum). All the Occlum demos are preinstalled in our docker image at `/root/occlum/demos`. Before having a try on them, install [enable_rdfsbase kernel module](https://github.com/occlum/enable_rdfsbase) to **make sure `fsgsbase` is enabled**.
+You can also run TEE applications developed based on [Occlum](https://github.com/occlum/occlum). All the Occlum demos are preinstalled in our docker image at `/root/occlum/demos`.
 
 We take `hello_c` as an example. (Command should be done inside Docker container):
 ```bash
