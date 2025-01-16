@@ -31,11 +31,22 @@ use core::convert::TryInto;
 use core::{mem::size_of, slice};
 use cstr_core::CStr;
 use cty::{c_char, uint32_t, uint64_t, uint8_t, uintptr_t};
+use numeric_enum_macro::numeric_enum;
 use spin::mutex::SpinMutex;
 use yogcrypt::sm2::*;
 use yogcrypt::sm3::sm3_enc;
 
 include!(concat!(env!("OUT_DIR"), "/version.rs"));
+
+numeric_enum! {
+    #[repr(u32)]
+    /// The mode of TPM, which is consistent with that in HyperEnclave Driver.
+    pub enum TpmMode {
+        Hardware = 0,
+        HygonFirmware = 4,
+        Fake = 8
+    }
+}
 
 extern "C" {
     pub static LIBTPM_VERSION: u32;
