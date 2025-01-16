@@ -17,6 +17,7 @@ use crate::config::HvSystemConfig;
 use crate::consts::{HV_BASE, PER_CPU_SIZE};
 use crate::error::HvResult;
 use crate::header::HvHeader;
+use crate::hypercall::tc::TpmMode;
 use crate::intervaltree::IntervalTree;
 use crate::memory::addr::{phys_to_virt, GuestPhysAddr, HostPhysAddr, HostVirtAddr};
 use crate::memory::cmr::NR_INIT_EPC_RANGES;
@@ -129,14 +130,18 @@ impl Cell {
             hv_phys_size - core_and_percpu_size,
             MemFlags::READ | MemFlags::WRITE | MemFlags::ENCRYPTED,
         ))?;
+
+        if header.tpm_type != TpmMode::Fake as u32 {
+            hvm.insert(MemoryRegion::new_with_offset_mapper(
+                header.tpm_mmio_pa,
+                header.tpm_mmio_pa,
+                header.tpm_mmio_size as usize,
+                MemFlags::READ | MemFlags::WRITE,
+            ))?;
+            println!("Not Fake TPM, mmio is mapped va={:#x}", header.tpm_mmio_pa);
+        }
+
         // guest RAM
-        hvm.insert(MemoryRegion::new_with_offset_mapper(
-            header.tpm_mmio_pa,
-            header.tpm_mmio_pa,
-            header.tpm_mmio_size as usize,
-            MemFlags::READ | MemFlags::WRITE,
-        ))?;
-        println!("tpm mmio is mapped va={:#x}", header.tpm_mmio_pa);
         for region in sys_config.mem_regions() {
             if region.flags.contains(MemFlags::DMA) {
                 let hv_virt_start = phys_to_virt(region.virt_start as GuestPhysAddr);
